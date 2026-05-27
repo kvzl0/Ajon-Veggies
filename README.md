@@ -71,7 +71,7 @@ http://localhost:5000
 ---
 
 ## 📂 Project Structure
----
+```
 quirol_v6/
 ├── app.py                                  # Main Flask application & routes
 ├── database.py                             # DB initialization, FIFO logic, data import
@@ -90,7 +90,7 @@ quirol_v6/
 │   └── ...
 └── static/
 └── img/products/                       # Vegetable product images
----
+```
 
 ## 📝 Notes
 
