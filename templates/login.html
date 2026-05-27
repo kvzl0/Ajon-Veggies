@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Ajon Veggies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --green:#2d6a4f; --green-lt:#40916c; --green-bg:#d8f3dc; --accent:#f4a261; --bg:#f7f9f5; --border:#e2e8dc; --text:#1a1a2e; --muted:#6b7280; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .auth-wrap { display:grid; grid-template-columns:1fr 420px; width:100%; max-width:860px; background:#fff; border-radius:20px; overflow:hidden; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.08); }
+        .auth-left { background:var(--green); padding:52px 44px; display:flex; flex-direction:column; justify-content:space-between; }
+        .auth-left .logo { font-size:40px; margin-bottom:16px; }
+        .auth-left h1 { font-family:'Plus Jakarta Sans',sans-serif; font-size:28px; font-weight:800; color:#fff; line-height:1.2; margin-bottom:10px; }
+        .auth-left p { color:rgba(255,255,255,0.65); font-size:14px; line-height:1.6; }
+        .auth-left .stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:40px; }
+        .auth-stat { background:rgba(255,255,255,0.1); border-radius:10px; padding:14px; }
+        .auth-stat-val { font-family:'Plus Jakarta Sans',sans-serif; font-size:20px; font-weight:800; color:#fff; }
+        .auth-stat-lbl { font-size:11px; color:rgba(255,255,255,0.55); margin-top:2px; }
+        .auth-right { padding:52px 44px; }
+        .auth-right h2 { font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:700; margin-bottom:6px; color:var(--text); }
+        .auth-right p { font-size:14px; color:var(--muted); margin-bottom:32px; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+        .input-wrap { position:relative; }
+        .form-group input { width:100%; padding:11px 40px 11px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; background:var(--bg); outline:none; transition:border 0.15s; }
+        .form-group input:focus { border-color:var(--green); background:#fff; }
+        .toggle-pw { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--muted); }
+        .btn-submit { width:100%; padding:12px; background:var(--green); color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:background 0.15s; margin-top:8px; }
+        .btn-submit:hover { background:var(--green-lt); }
+        .auth-link { text-align:center; margin-top:20px; font-size:13px; color:var(--muted); }
+        .auth-link a { color:var(--green); font-weight:600; text-decoration:none; }
+        .flash { background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
+        .flash.error { background:#fde8e8; color:#c0392b; border-color:#e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+    <div class="auth-left">
+        <div>
+            <div class="logo">🥬</div>
+            <h1>Ajon Veggies </h1>
+            <p>Data-driven POS and analytics system for your vegetable distribution business.</p>
+        </div>
+        <div class="stats">
+            <div class="auth-stat"><div class="auth-stat-val">POS</div><div class="auth-stat-lbl">Sales Recording</div></div>
+            <div class="auth-stat"><div class="auth-stat-val">Stock</div><div class="auth-stat-lbl">Inventory Tracking</div></div>
+            <div class="auth-stat"><div class="auth-stat-val">Reports</div><div class="auth-stat-lbl">Financial Export</div></div>
+            <div class="auth-stat"><div class="auth-stat-val">Insights</div><div class="auth-stat-lbl">Analytics Dashboard</div></div>
+        </div>
+    </div>
+
+    <div class="auth-right">
+        <h2>Welcome back</h2>
+        <p>Sign in to access your dashboard.</p>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="flash">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label>Username</label>
+                <div class="input-wrap">
+                    <input type="text" name="username" placeholder="Enter username" required autofocus autocomplete="username">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <div class="input-wrap">
+                    <input type="password" name="password" id="loginPw" placeholder="Enter password" required autocomplete="current-password">
+                    <button type="button" class="toggle-pw" onclick="togglePw('loginPw', this)">
+                        <i data-lucide="eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Sign In</button>
+        </form>
+
+        <div class="auth-link">
+            Contact your system owner to create an account.
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    lucide.createIcons();
+
+    function togglePw(id, btn) {
+        const input = document.getElementById(id);
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.innerHTML = '<i data-lucide="eye-off"></i>';
+        } else {
+            input.type = 'password';
+            btn.innerHTML = '<i data-lucide="eye"></i>';
+        }
+
+        lucide.createIcons();
+    }
+</script>
+
+</body>
+</html>

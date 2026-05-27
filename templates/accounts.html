@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Accounts — Ajon Veggies{% endblock %}
+{% block page_title %}Manage Accounts{% endblock %}
+{% block head %}
+<style>
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:var(--card); border-radius:16px; padding:32px; width:420px; border:1px solid var(--border); }
+.modal-box h3 { font-family:'Plus Jakarta Sans',sans-serif; font-size:18px; font-weight:700; margin-bottom:4px; color:var(--text); }
+.modal-box p { font-size:13px; color:var(--muted); margin-bottom:20px; }
+.modal-footer { display:flex; gap:10px; margin-top:20px; }
+.pw-wrap { position:relative; }
+.pw-wrap input { padding-right:40px; }
+.pw-eye {
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    background:none; border:none; cursor:pointer; color:var(--muted);
+    padding:2px; display:flex; align-items:center;
+}
+.pw-eye svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.role-badge-owner   { background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.role-badge-cashier { background:var(--green-bg); color:var(--green); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+[data-theme="dark"] .role-badge-owner { background:#0c2a3d; color:#38bdf8; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="card-title" style="margin:0;">All Accounts</div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('createModal').classList.add('show')">+ New Account</button>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>
+                    <strong>{{ u.username }}</strong>
+                    {% if u.id == session.user_id %}<span style="font-size:11px;color:var(--muted);margin-left:6px;">(you)</span>{% endif %}
+                </td>
+                <td>
+                    <span class="role-badge-{{ u.role }}">{{ u.role.title() }}</span>
+                </td>
+                <td style="font-size:13px;color:var(--muted);">{{ u.created_at[:10] }}</td>
+                <td style="white-space:nowrap;">
+                    {% if u.id != session.user_id %}
+                    <!-- Change Role -->
+                    <form method="POST" action="{{ url_for('change_role', uid=u.id) }}" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                        <input type="hidden" name="role" value="{{ 'cashier' if u.role == 'owner' else 'owner' }}">
+                        <button type="submit" class="btn btn-outline btn-sm">
+                             {{ 'Cashier' if u.role == 'owner' else 'Promote' }}
+                        </button>
+                    </form>
+                    <!-- Delete -->
+                    <button class="btn btn-sm" style="margin-left:4px;background:var(--red);color:#fff;border:none;"
+                        onclick="confirmDeleteAccount({{ u.id }}, '{{ u.username }}')">Delete</button>
+                    {% else %}
+                    <span style="font-size:12px;color:var(--muted);">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Create Account Modal -->
+<div class="modal-overlay" id="createModal">
+    <div class="modal-box">
+        <h3>Create New Account</h3>
+        <p>New accounts are set to Cashier by default. You can change the role after creation.</p>
+        <form method="POST" action="{{ url_for('create_account') }}" id="createForm">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" placeholder="Letters, numbers, underscore" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <div class="pw-wrap">
+                    <input type="password" name="password" id="cpw1" placeholder="At least 6 characters" required>
+                    <button type="button" class="pw-eye" onclick="togglePw('cpw1',this)" data-open="true"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <div class="pw-wrap">
+                    <input type="password" name="confirm" id="cpw2" placeholder="Repeat password" required>
+                    <button type="button" class="pw-eye" onclick="togglePw('cpw2',this)" data-open="true"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select name="role">
+                    <option value="cashier" selected>Cashier (default)</option>
+                    <option value="owner">Owner</option>
+                </select>
+            </div>
+            <div id="createModalError" style="display:none;font-size:13px;color:var(--red);background:#fde8e8;border-radius:8px;padding:10px 14px;margin-top:4px;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;" onclick="return validateCreate()">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Account Confirmation Modal -->
+<div class="modal-overlay" id="deleteAccountModal">
+    <div class="modal-box" style="width:360px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+        <h3 id="delAccTitle">Delete Account?</h3>
+        <p id="delAccMsg"></p>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('deleteAccountModal').classList.remove('show')">Cancel</button>
+            <form id="delAccForm" method="POST" style="flex:1;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger" style="width:100%;justify-content:center;">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    const isHidden = el.type === 'password';
+    el.type = isHidden ? 'text' : 'password';
+    btn.innerHTML = isHidden ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+function confirmDeleteAccount(id, name) {
+    document.getElementById('delAccTitle').textContent = 'Delete ' + name + '?';
+    document.getElementById('delAccMsg').textContent = 'This will permanently remove the account for "' + name + '". This cannot be undone.';
+    document.getElementById('delAccForm').action = '/accounts/delete/' + id;
+    document.getElementById('deleteAccountModal').classList.add('show');
+}
+document.getElementById('createModal').addEventListener('click', function(e) { if(e.target===this) closeCreateModal(); });
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('show');
+    document.getElementById('createModalError').style.display = 'none';
+    document.getElementById('createForm').reset();
+}
+
+function validateCreate() {
+    const username = document.querySelector('#createForm [name="username"]').value.trim();
+    const pw  = document.getElementById('cpw1').value;
+    const cpw = document.getElementById('cpw2').value;
+    const errEl = document.getElementById('createModalError');
+
+    errEl.style.display = 'none';
+
+    if (!username || username.length < 3) {
+        errEl.textContent = 'Username must be at least 3 characters.';
+        errEl.style.display = 'block'; return false;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        errEl.textContent = 'Username can only contain letters, numbers, and underscore.';
+        errEl.style.display = 'block'; return false;
+    }
+    if (pw.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters.';
+        errEl.style.display = 'block'; return false;
+    }
+    if (pw !== cpw) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.style.display = 'block'; return false;
+    }
+    return true;
+}
+
+// If there's a flash error from server (e.g. duplicate username), reopen modal
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+window.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('createModal');
+    const errEl = document.getElementById('createModalError');
+    const msgs = {{ messages | tojson }};
+    const accountErrors = msgs.filter(m => m.includes('taken') || m.includes('Username') || m.includes('Password') || m.includes('match'));
+    if (accountErrors.length > 0) {
+        errEl.textContent = accountErrors[0];
+        errEl.style.display = 'block';
+        modal.classList.add('show');
+    }
+});
+{% endif %}
+{% endwith %}
+document.getElementById('deleteAccountModal').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('show'); });
+</script>
+{% endblock %}

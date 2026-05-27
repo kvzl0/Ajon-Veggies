@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Ajon Veggies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --green:#2d6a4f; --green-lt:#40916c; --bg:#f7f9f5; --border:#e2e8dc; --text:#1a1a2e; --muted:#6b7280; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .auth-wrap { width:100%; max-width:420px; background:#fff; border-radius:20px; padding:48px 44px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.08); }
+        .logo { font-size:36px; text-align:center; margin-bottom:16px; }
+        h2 { font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:700; text-align:center; margin-bottom:6px; }
+        .sub { font-size:14px; color:var(--muted); text-align:center; margin-bottom:32px; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+        .input-wrap { position:relative; }
+        .form-group input { width:100%; padding:11px 40px 11px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; background:var(--bg); outline:none; transition:border 0.15s; }
+        .form-group input:focus { border-color:var(--green); background:#fff; }
+        .toggle-pw { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--muted); }
+        .btn-submit { width:100%; padding:12px; background:var(--green); color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:background 0.15s; margin-top:8px; }
+        .btn-submit:hover { background:var(--green-lt); }
+        .auth-link { text-align:center; margin-top:20px; font-size:13px; color:var(--muted); }
+        .auth-link a { color:var(--green); font-weight:600; text-decoration:none; }
+        .flash { background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
+        .hint { font-size:11px; color:var(--muted); margin-top:4px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+    <div class="logo">🥬</div>
+    <h2>Create Account</h2>
+    <p class="sub">Register to access Quirol Veggies system.</p>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for msg in messages %}
+            <div class="flash">{{ msg }}</div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label>Username</label>
+            <div class="input-wrap">
+                <input type="text" name="username" placeholder="Letters, numbers, underscore" required autofocus autocomplete="username">
+            </div>
+            <div class="hint">3–50 characters. Letters, numbers, and underscore only.</div>
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <div class="input-wrap">
+                <input type="password" name="password" id="pw1" placeholder="At least 6 characters" required autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePw('pw1', this)">
+                    <i data-lucide="eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <div class="input-wrap">
+                <input type="password" name="confirm" id="pw2" placeholder="Repeat your password" required autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePw('pw2', this)">
+                    <i data-lucide="eye"></i>
+                </button>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Create Account</button>
+    </form>
+
+    <div class="auth-link">
+        Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    lucide.createIcons();
+
+    function togglePw(id, btn) {
+        const input = document.getElementById(id);
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.innerHTML = '<i data-lucide="eye-off"></i>';
+        } else {
+            input.type = 'password';
+            btn.innerHTML = '<i data-lucide="eye"></i>';
+        }
+
+        lucide.createIcons();
+    }
+</script>
+
+</body>
+</html>

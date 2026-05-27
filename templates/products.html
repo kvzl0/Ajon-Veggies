@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}Products — Ajon Veggies{% endblock %}
+{% block page_title %}Products{% endblock %}
+{% block head %}
+<style>
+.edit-row { display:none; background:var(--bg); }
+.edit-row.open { display:table-row; }
+.edit-form { display:flex; gap:12px; align-items:flex-end; padding:12px; flex-wrap:wrap; }
+.edit-form .form-group { margin:0; min-width:130px; }
+.edit-form .form-group label { font-size:11px; }
+.edit-form .form-group input { padding:8px 10px; font-size:13px; }
+.restock-row { display:none; background:var(--green-bg); }
+.restock-row.open { display:table-row; }
+.restock-form { display:flex; gap:12px; align-items:flex-end; padding:12px; flex-wrap:wrap; }
+.restock-form .form-group { margin:0; min-width:160px; }
+.restock-form .form-group label { font-size:11px; }
+.restock-form .form-group input { padding:8px 10px; font-size:13px; }
+
+/* Add Product Modal */
+.modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.5); z-index:1000;
+    align-items:center; justify-content:center;
+}
+.modal-overlay.show { display:flex; }
+.modal-box {
+    background:var(--card); border-radius:16px;
+    padding:32px; width:480px;
+    border:1px solid var(--border);
+}
+.modal-box h3 {
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:18px; font-weight:700; margin-bottom:4px; color:var(--text);
+}
+.modal-box p { font-size:13px; color:var(--muted); margin-bottom:20px; }
+.modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-footer { display:flex; gap:10px; margin-top:20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <div class="card-title" style="margin:0;">All Products</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddProduct()">+ Add Product</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:56px"></th>
+                <th>Product</th>
+                <th>Unit Price (₱/kg)</th>
+                <th>Stock (kg)</th>
+                <th>Shelf Life</th>
+                <th>Low Stock Threshold</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td><img src="/product-image/{{ p.name }}" alt="{{ p.name }}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--green-bg)" onerror="this.src='/static/img/products/placeholder.svg'"></td>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>₱{{ "%.2f"|format(p.unit_price) }}</td>
+                <td>{{ "%.1f"|format(p.stock_kg) }} kg</td>
+                <td>{{ p.shelf_life_days }} days</td>
+                <td>{{ "%.1f"|format(p.low_stock_threshold) }} kg</td>
+                <td>
+                    {% if p.stock_kg <= 0 %}
+                        <span class="badge badge-red">Out of Stock</span>
+                    {% elif p.stock_kg <= p.low_stock_threshold %}
+                        <span class="badge badge-orange">Low Stock</span>
+                    {% else %}
+                        <span class="badge badge-green">In Stock</span>
+                    {% endif %}
+                </td>
+                <td style="white-space:nowrap;">
+                    <button class="btn btn-outline btn-sm" onclick="toggleEdit({{ p.id }})">Edit</button>
+                    <button class="btn btn-primary btn-sm" style="margin-left:4px;" onclick="toggleRestock({{ p.id }})">+ Restock</button>
+                    <button class="btn btn-sm" style="margin-left:4px;background:var(--red);color:#fff;border:none;" onclick="confirmDelete({{ p.id }}, '{{ p.name }}')">Delete</button>
+                </td>
+            </tr>
+
+            <!-- Edit Row -->
+            <tr class="edit-row" id="edit-{{ p.id }}">
+                <td colspan="8">
+                    <form method="POST" action="{{ url_for('update_product', pid=p.id) }}">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                        <div class="edit-form">
+                            <div class="form-group">
+                                <label>Unit Price (₱)</label>
+                                <input type="number" name="unit_price" step="0.01" value="{{ p.unit_price }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Stock (kg)</label>
+                                <input type="number" name="stock_kg" step="0.1" value="{{ p.stock_kg }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Shelf Life (days)</label>
+                                <input type="number" name="shelf_life_days" step="1" min="1" value="{{ p.shelf_life_days }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Low Stock Threshold (kg)</label>
+                                <input type="number" name="low_stock_threshold" step="0.1" value="{{ p.low_stock_threshold }}" required>
+                            </div>
+                            <div style="display:flex;gap:8px;padding-bottom:2px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleEdit({{ p.id }})">Cancel</button>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+
+            <!-- Restock Row -->
+            <tr class="restock-row" id="restock-{{ p.id }}">
+                <td colspan="8">
+                    <form method="POST" action="{{ url_for('restock_product', pid=p.id) }}">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                        <div class="restock-form">
+                            <div class="form-group">
+                                <label>Quantity to Add (kg)</label>
+                                <input type="number" name="qty_kg" step="0.1" min="0.1" placeholder="e.g. 50" required>
+                            </div>
+                            <div style="font-size:12px; color:var(--muted); align-self:flex-end; padding-bottom:10px;">
+                                Will expire in <strong>{{ p.shelf_life_days }} days</strong> from today.
+                            </div>
+                            <div style="display:flex;gap:8px;padding-bottom:2px;">
+                                <button type="submit" class="btn btn-primary btn-sm">Add Stock</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleRestock({{ p.id }})">Cancel</button>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal-overlay" id="addProductModal">
+    <div class="modal-box">
+        <h3>Add New Product</h3>
+        <p>Fill in the details for the new vegetable product.</p>
+        <form method="POST" action="{{ url_for('add_product') }}" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" name="name" placeholder="e.g. Kangkong" required>
+            </div>
+            <div class="form-group">
+                <label>Product Image <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+                <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" style="padding:8px 14px;">
+                <div style="font-size:11px;color:var(--muted);margin-top:4px;">Accepted: JPG, PNG, WEBP. Square image recommended.</div>
+            </div>
+            <div class="modal-grid">
+                <div class="form-group">
+                    <label>Unit Price (₱/kg)</label>
+                    <input type="number" name="unit_price" step="0.01" min="0.01" placeholder="e.g. 80" required>
+                </div>
+                <div class="form-group">
+                    <label>Initial Stock (kg)</label>
+                    <input type="number" name="stock_kg" step="0.1" min="0" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Shelf Life (days)</label>
+                    <input type="number" name="shelf_life_days" step="1" min="1" value="7" required>
+                </div>
+                <div class="form-group">
+                    <label>Low Stock Threshold (kg)</label>
+                    <input type="number" name="low_stock_threshold" step="0.1" min="0" value="50" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeAddProduct()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-box" style="width:380px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+        <h3 id="deleteModalTitle">Delete Product?</h3>
+        <p id="deleteModalMsg" style="margin-top:8px;margin-bottom:0;color:var(--muted);font-size:14px;"></p>
+        <div class="modal-footer" style="margin-top:20px;">
+            <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeDeleteModal()">Cancel</button>
+            <form id="deleteForm" method="POST" style="flex:1;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger" style="width:100%;justify-content:center;">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleEdit(id) {
+    document.getElementById('edit-' + id).classList.toggle('open');
+    document.getElementById('restock-' + id).classList.remove('open');
+}
+function toggleRestock(id) {
+    document.getElementById('restock-' + id).classList.toggle('open');
+    document.getElementById('edit-' + id).classList.remove('open');
+}
+function openAddProduct() {
+    document.getElementById('addProductModal').classList.add('show');
+}
+function closeAddProduct() {
+    document.getElementById('addProductModal').classList.remove('show');
+}
+document.getElementById('addProductModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddProduct();
+});
+
+function confirmDelete(id, name) {
+    document.getElementById('deleteModalTitle').textContent = 'Delete ' + name + '?';
+    document.getElementById('deleteModalMsg').textContent = 'This will permanently remove ' + name + ' from the system. This cannot be undone.';
+    document.getElementById('deleteForm').action = '/products/delete/' + id;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('show');
+}
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+
+</script>
+{% endblock %}

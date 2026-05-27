@@ -1,0 +1,28 @@
+HOW TO ADD PRODUCT IMAGES
+==========================
+
+1. Put your image files in this folder (static/img/products/).
+
+2. Name each file exactly after the product, with spaces replaced by underscores:
+   - Ampalaya.jpg
+   - Bell_Pepper.jpg
+   - Cabbage.jpg
+   - Carrots.jpg
+   - Chili.jpg
+   - Eggplant.jpg
+   - Garlic.jpg
+   - Ginger.jpg
+   - Lettuce.jpg
+   - Malunggay.jpg
+   - Onions.jpg
+   - Pechay.jpg
+   - Potatoes.jpg
+   - String_Beans.jpg
+   - Tomatoes.jpg
+
+3. Supported formats: .jpg, .jpeg, .png, .webp
+
+4. Restart the app (py app.py) — images will show automatically.
+   No code changes needed.
+
+If no image is found for a product, a default placeholder is shown.

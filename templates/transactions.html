@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Transactions — Ajon Veggies{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-title">Recent Transactions (Last 100)</div>
+    {% if transactions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Total</th>
+                <th>Date & Time</th>
+                <th>Cashier</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td><strong>{{ t.transaction_code }}</strong></td>
+                <td>₱{{ "{:,.2f}".format(t.total_amount) }}</td>
+                <td>{{ t.created_at }}</td>
+                <td>{{ t.username }}</td>
+                <td><a href="{{ url_for('transaction_detail', txn_id=t.id) }}" class="btn btn-outline btn-sm">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--muted); padding:20px 0; font-size:14px;">No transactions yet. Use the POS to record sales.</p>
+    {% endif %}
+</div>
+{% endblock %}

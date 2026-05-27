@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% block title %}POS — Ajon Veggies{% endblock %}
+{% block page_title %}Point of Sale{% endblock %}
+
+{% block head %}
+<meta name="csrf" content="{{ csrf_token() }}">
+<style>
+    .pos-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+    }
+
+    .product-btn {
+        background: var(--card);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 14px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.15s;
+        position: relative;
+    }
+    .product-btn:hover { border-color: var(--green); background: var(--green-bg); transform: translateY(-2px); }
+    .product-btn.out-of-stock { opacity: 0.4; cursor: not-allowed; }
+
+    
+    .prod-img-wrap {
+        width: 100%; height: 120px;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 0 auto 10px;
+        background: var(--green-bg);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .prod-img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+    }
+    .prod-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .prod-price { font-size: 12px; color: var(--green); font-weight: 600; }
+    .prod-stock { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Cart */
+    .cart-panel { position: sticky; top: 20px; }
+    .cart-items { max-height: 340px; overflow-y: auto; margin-bottom: 16px; }
+
+    .cart-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-name { flex: 1; font-size: 13px; font-weight: 600; }
+    .cart-item-price { font-size: 12px; color: var(--muted); }
+
+    .qty-control { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+        width: 26px; height: 26px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.1s;
+    }
+    .qty-btn:hover { border-color: var(--green); color: var(--green); }
+    .qty-input {
+        width: 56px;
+        text-align: center;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 4px;
+        font-size: 13px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .cart-subtotal { font-size: 12px; color: var(--muted); text-align: right; }
+    .remove-btn { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--muted); padding: 2px 4px; }
+    .remove-btn:hover { color: var(--red); }
+
+    .cart-total-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 0;
+        border-top: 2px solid var(--border);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+    }
+    .empty-cart { text-align: center; padding: 40px 0; color: var(--muted); font-size: 14px; }
+    .empty-cart .icon { font-size: 36px; margin-bottom: 8px; }
+
+    /* Receipt modal */
+    .modal-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+        background: #fff;
+        border-radius: 16px;
+        padding: 36px;
+        width: 380px;
+        text-align: center;
+    }
+    .modal h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .receipt-code { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .receipt-total { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 800; color: var(--green); margin: 16px 0; }
+    .change-row { background: var(--green-bg); border-radius: 8px; padding: 12px; margin: 12px 0; }
+    .change-label { font-size: 12px; color: var(--muted); }
+    .change-val { font-size: 22px; font-weight: 700; color: var(--green); }
+    .cash-input-row { margin: 16px 0; }
+    .cash-input-row label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; }
+    .cash-input-row input { width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 16px; text-align: center; font-family: 'Inter', sans-serif; outline: none; }
+    .cash-input-row input:focus { border-color: var(--green); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+    <!-- Products -->
+    <div>
+        <div class="card" style="margin-bottom:16px; padding:16px 20px;">
+            <input type="text" id="searchInput" placeholder=" Search product..." style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:9px 14px; font-size:14px; font-family:'Inter',sans-serif; outline:none; background:var(--bg);">
+        </div>
+        <div class="product-grid" id="productGrid">
+            {% for p in products %}
+            <div class="product-btn {{ 'out-of-stock' if p.stock_kg <= 0 }}"
+                 data-id="{{ p.id }}"
+                 data-name="{{ p.name }}"
+                 data-price="{{ p.unit_price }}"
+                 data-stock="{{ p.stock_kg }}"
+                 data-name-lower="{{ p.name.lower() }}"
+                 onclick="addToCart(this)">
+                <div class="prod-img-wrap">
+                    <img src="/product-image/{{ p.name }}" alt="{{ p.name }}" class="prod-img" onerror="this.src='/static/img/products/placeholder.svg'">
+                </div>
+                <div class="prod-name">{{ p.name }}</div>
+                <div class="prod-price">₱{{ "%.2f"|format(p.unit_price) }}/kg</div>
+                <div class="prod-stock">Stock: {{ "%.1f"|format(p.stock_kg) }} kg</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Cart -->
+    <div class="cart-panel">
+        <div class="card">
+            <div class="card-title">🛒 Current Order</div>
+            <div class="cart-items" id="cartItems">
+                <div class="empty-cart" id="emptyCart">
+                    <div class="icon">🛒</div>
+                    <div>No items yet.<br>Click a product to add.</div>
+                </div>
+            </div>
+            <div id="cartTotalRow" class="cart-total-row" style="display:none">
+                <span>Total</span>
+                <span id="cartTotal">₱0.00</span>
+            </div>
+            <button class="btn btn-primary" style="width:100%; margin-top:12px; justify-content:center; font-size:15px; padding:13px;"
+                onclick="openCheckout()" id="checkoutBtn" disabled>
+                Checkout
+            </button>
+            <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px; justify-content:center;"
+                onclick="clearCart()">Clear Cart</button>
+        </div>
+    </div>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-overlay" id="checkoutModal">
+    <div class="modal">
+        <div style="font-size:40px; margin-bottom:8px;">🧾</div>
+        <h3>Confirm Order</h3>
+        <div class="receipt-code" id="receiptCode"></div>
+        <div class="receipt-total" id="receiptTotal"></div>
+        <div class="cash-input-row">
+            <label>Cash Received (₱)</label>
+            <input type="number" id="cashInput" placeholder="0.00" oninput="computeChange()">
+        </div>
+        <div class="change-row" id="changeRow" style="display:none">
+            <div class="change-label">Change</div>
+            <div class="change-val" id="changeVal">₱0.00</div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-outline" style="flex:1; justify-content:center;" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" style="flex:1; justify-content:center;" onclick="confirmCheckout()">Confirm Sale</button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+    <div class="modal">
+        <div style="font-size:48px; margin-bottom:12px;">✅</div>
+        <h3>Sale Completed!</h3>
+        <div class="receipt-code" id="successCode"></div>
+        <div class="receipt-total" id="successTotal"></div>
+        <div class="change-row" id="successChange">
+            <div class="change-label">Change Given</div>
+            <div class="change-val" id="successChangeVal"></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:20px; justify-content:center;" onclick="newTransaction()">New Transaction</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cart = {};
+
+document.querySelectorAll('.prod-icon').forEach(el => {
+    const name = el.closest('.product-btn').dataset.name;
+    el.textContent = VEGGIE_ICONS[name] || '';
+});
+
+document.getElementById('searchInput').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.product-btn').forEach(btn => {
+        btn.style.display = btn.dataset.nameLower.includes(q) ? '' : 'none';
+    });
+});
+
+function addToCart(btn) {
+    if (btn.classList.contains('out-of-stock')) return;
+    const id = btn.dataset.id;
+    if (cart[id]) {
+        cart[id].qty += 1;
+    } else {
+        cart[id] = {
+            id, name: btn.dataset.name,
+            price: parseFloat(btn.dataset.price),
+            stock: parseFloat(btn.dataset.stock),
+            qty: 1
+        };
+    }
+    renderCart();
+}
+
+function renderCart() {
+    const container = document.getElementById('cartItems');
+    const empty = document.getElementById('emptyCart');
+    const totalRow = document.getElementById('cartTotalRow');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const keys = Object.keys(cart);
+
+    if (keys.length === 0) {
+        empty.style.display = '';
+        totalRow.style.display = 'none';
+        checkoutBtn.disabled = true;
+        container.innerHTML = '';
+        container.appendChild(empty);
+        return;
+    }
+
+    empty.style.display = 'none';
+    totalRow.style.display = 'flex';
+    checkoutBtn.disabled = false;
+
+    let html = '';
+    let total = 0;
+    keys.forEach(id => {
+        const item = cart[id];
+        const subtotal = item.qty * item.price;
+        total += subtotal;
+        html += `
+        <div class="cart-item">
+            <div style="flex:1">
+                <div class="cart-item-name">${item.name}</div>
+                <div class="cart-item-price">₱${item.price.toFixed(2)}/kg × ${item.qty} kg = ₱${subtotal.toFixed(2)}</div>
+            </div>
+            <div class="qty-control">
+                <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+                <input class="qty-input" type="number" value="${item.qty}" min="0.5" step="0.5"
+                    onchange="setQty('${id}', this.value)">
+                <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
+                <button class="remove-btn" onclick="removeItem('${id}')">✕</button>
+            </div>
+        </div>`;
+    });
+
+    const emptyEl = document.getElementById('emptyCart');
+    container.innerHTML = html;
+    container.appendChild(emptyEl);
+
+    document.getElementById('cartTotal').textContent = '₱' + total.toLocaleString('en-PH', {minimumFractionDigits:2});
+}
+
+function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty = Math.max(0.5, parseFloat((cart[id].qty + delta).toFixed(1)));
+    renderCart();
+}
+
+function setQty(id, val) {
+    const v = parseFloat(val);
+    if (isNaN(v) || v <= 0) { removeItem(id); return; }
+    cart[id].qty = v;
+    renderCart();
+}
+
+function removeItem(id) {
+    delete cart[id];
+    renderCart();
+}
+
+function clearCart() {
+    cart = {};
+    renderCart();
+}
+
+function getTotal() {
+    return Object.values(cart).reduce((s, i) => s + i.qty * i.price, 0);
+}
+
+function openCheckout() {
+    const total = getTotal();
+    document.getElementById('receiptTotal').textContent = '₱' + total.toLocaleString('en-PH', {minimumFractionDigits:2});
+    document.getElementById('cashInput').value = '';
+    document.getElementById('changeRow').style.display = 'none';
+    document.getElementById('checkoutModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('checkoutModal').classList.remove('show');
+}
+
+function computeChange() {
+    const cash = parseFloat(document.getElementById('cashInput').value) || 0;
+    const total = getTotal();
+    const change = cash - total;
+    const row = document.getElementById('changeRow');
+    if (cash > 0) {
+        row.style.display = '';
+        document.getElementById('changeVal').textContent = '₱' + Math.max(0, change).toLocaleString('en-PH', {minimumFractionDigits:2});
+        document.getElementById('changeVal').style.color = change < 0 ? 'var(--red)' : 'var(--green)';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+async function confirmCheckout() {
+    const items = Object.values(cart).map(i => ({
+        product_id: i.id,
+        quantity_kg: i.qty,
+        unit_price: i.price,
+        subtotal: i.qty * i.price
+    }));
+    const cash = parseFloat(document.getElementById('cashInput').value) || 0;
+    const total = getTotal();
+    if (cash < total) { alert('Cash received is less than the total.'); return; }
+
+    const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-CSRF-Token': document.querySelector('meta[name=csrf]').content},
+        body: JSON.stringify({items})
+    });
+    const data = await res.json();
+    if (data.success) {
+        closeModal();
+        document.getElementById('successCode').textContent = 'Transaction: ' + data.code;
+        document.getElementById('successTotal').textContent = '₱' + data.total.toLocaleString('en-PH', {minimumFractionDigits:2});
+        document.getElementById('successChangeVal').textContent = '₱' + (cash - data.total).toLocaleString('en-PH', {minimumFractionDigits:2});
+        document.getElementById('successModal').classList.add('show');
+    } else {
+        alert('Error: ' + data.error);
+    }
+}
+
+function newTransaction() {
+    document.getElementById('successModal').classList.remove('show');
+    clearCart();
+    location.reload();
+}
+</script>
+{% endblock %}

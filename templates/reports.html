@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% block title %}Financial Reports — Ajon Veggies{% endblock %}
+{% block page_title %}Financial Reports{% endblock %}
+{% block head %}
+<style>
+.report-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+.export-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.export-box h3 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 16px;
+}
+.export-controls {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.export-controls .form-group {
+    margin: 0;
+    min-width: 160px;
+}
+.scope-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.scope-btn {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    transition: all 0.15s;
+}
+.scope-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+.date-range-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+#dateRangeFields { display: none; }
+#dateRangeFields.show { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="stats-grid" style="margin-bottom:24px;">
+    <div class="stat-card">
+        <div class="stat-label">Historical Revenue (Dec–Feb)</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(hist_total) }}</div>
+        <div class="stat-sub">From 3-month Excel data</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-label">Live Revenue (POS)</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(live_total) }}</div>
+        <div class="stat-sub">From recorded transactions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Grand Total Revenue</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(grand_total) }}</div>
+        <div class="stat-sub">All-time combined</div>
+    </div>
+</div>
+
+<!-- Export Box -->
+<div class="export-box">
+    <h3>⬇ Download Sales Report (CSV)</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
+        Export follows the same format as the original monthly sales Excel file —
+        Item, Unit Price, Days Sold, Daily Avg Qty, Daily Avg Sales, Monthly Qty, Monthly Sales.
+    </p>
+
+    <div class="scope-toggle">
+        <button class="scope-btn active" id="btnAll" onclick="setScope('all')">All Records</button>
+        <button class="scope-btn" id="btnRange" onclick="setScope('range')">Specific Date Range</button>
+    </div>
+
+    <div id="dateRangeFields">
+        <div class="form-group">
+            <label>Date From</label>
+            <input type="date" id="dateFrom">
+        </div>
+        <div class="form-group">
+            <label>Date To</label>
+            <input type="date" id="dateTo">
+        </div>
+    </div>
+
+    <div style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="downloadReport()">⬇ Download CSV</button>
+    </div>
+</div>
+
+<div class="report-grid">
+    <!-- Historical Monthly -->
+    <div class="card">
+        <div class="card-title">Historical Sales (Dec 2025 – Feb 2026)</div>
+        <table>
+            <thead><tr><th>Month</th><th>Revenue</th><th>Qty Sold (kg)</th></tr></thead>
+            <tbody>
+                {% for h in hist %}
+                <tr>
+                    <td>{{ h.month }}</td>
+                    <td>₱{{ "{:,.0f}".format(h.revenue) }}</td>
+                    <td>{{ "{:,.0f}".format(h.qty) }} kg</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Live Monthly -->
+    <div class="card">
+        <div class="card-title">Live Monthly Sales (POS Transactions)</div>
+        {% if monthly %}
+        <table>
+            <thead><tr><th>Month</th><th>Transactions</th><th>Revenue</th></tr></thead>
+            <tbody>
+                {% for m in monthly %}
+                <tr>
+                    <td>{{ m.month }}</td>
+                    <td>{{ m.txn_count }}</td>
+                    <td>₱{{ "{:,.2f}".format(m.revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:var(--muted);font-size:14px;padding:16px 0;">No live transactions yet. Use the POS to record sales.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Per Product Performance -->
+<div class="card">
+    <div class="card-title">Revenue by Product (Live Transactions)</div>
+    {% if by_product %}
+    <table>
+        <thead>
+            <tr><th>Product</th><th>Transactions</th><th>Total Qty (kg)</th><th>Total Revenue</th></tr>
+        </thead>
+        <tbody>
+            {% for p in by_product %}
+            <tr>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>{{ p.txn_count }}</td>
+                <td>{{ "%.1f"|format(p.total_qty) }} kg</td>
+                <td>₱{{ "{:,.2f}".format(p.total_revenue) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--muted);font-size:14px;padding:16px 0;">No live transactions yet.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentScope = 'all';
+
+function setScope(scope) {
+    currentScope = scope;
+    document.getElementById('btnAll').classList.toggle('active', scope === 'all');
+    document.getElementById('btnRange').classList.toggle('active', scope === 'range');
+    document.getElementById('dateRangeFields').classList.toggle('show', scope === 'range');
+}
+
+function downloadReport() {
+    if (currentScope === 'range') {
+        const from = document.getElementById('dateFrom').value;
+        const to   = document.getElementById('dateTo').value;
+        if (!from || !to) {
+            alert('Please select both a start and end date.');
+            return;
+        }
+        if (from > to) {
+            alert('"Date From" must be before "Date To".');
+            return;
+        }
+        window.location.href = `/reports/export?scope=range&date_from=${from}&date_to=${to}`;
+    } else {
+        window.location.href = '/reports/export?scope=all';
+    }
+}
+
+// Limit date pickers to range we have data for
+const MIN_DATE = '2025-12-01';  // December 2025
+const MAX_DATE = '2026-02-28';  // February 2026
+
+const fromEl = document.getElementById('dateFrom');
+const toEl   = document.getElementById('dateTo');
+
+fromEl.min = MIN_DATE;
+fromEl.max = MAX_DATE;
+fromEl.value = MIN_DATE;
+
+toEl.min = MIN_DATE;
+toEl.max = MAX_DATE;
+toEl.value = MAX_DATE;
+
+// Keep from <= to
+fromEl.addEventListener('change', () => {
+    if (fromEl.value > toEl.value) toEl.value = fromEl.value;
+    toEl.min = fromEl.value;
+});
+toEl.addEventListener('change', () => {
+    if (toEl.value < fromEl.value) fromEl.value = toEl.value;
+    fromEl.max = toEl.value;
+});
+</script>
+{% endblock %}

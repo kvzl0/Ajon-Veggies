@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Ajon Veggies{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% set hist_months = hist_months | default([]) %}
+{% set hist_totals = hist_totals | default([]) %}
+{% set best_sellers = best_sellers | default([]) %}
+{% set slow_movers = slow_movers | default([]) %}
+{% set low_stock = low_stock | default([]) %}
+{% set recommendations = recommendations | default([]) %}
+{% set today_sales = today_sales | default(0) %}
+{% set today_count = today_count | default(0) %}
+{% set total_revenue = total_revenue | default(0) %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Revenue (All Time)</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(total_revenue) }}</div>
+        <div class="stat-sub">Historical + live transactions</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-label">Today's Sales</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(today_sales) }}</div>
+        <div class="stat-sub">{{ today_count }} transaction(s) today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Products</div>
+        <div class="stat-value">15</div>
+        <div class="stat-sub">Active vegetable items</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Low Stock Alerts</div>
+        <div class="stat-value">{{ low_stock|length }}</div>
+        <div class="stat-sub">Items below threshold</div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Monthly Sales Chart -->
+    <div class="card">
+        <div class="card-title">Monthly Sales — Historical</div>
+        <div class="chart-wrap">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Best Sellers -->
+    <div class="card">
+        <div class="card-title">Top 5 Best Sellers</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Revenue</th>
+                    <th>Qty (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in best_sellers %}
+                <tr>
+                    <td><strong>{{ loop.index }}</strong></td>
+                    <td>{{ p.name }}</td>
+                    <td>₱{{ "{:,.0f}".format(p.hist_sales) }}</td>
+                    <td>{{ "{:,.0f}".format(p.hist_qty) }} kg</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Daily Sales Trend -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-title">Daily Sales Trend (Last 90 Days)</div>
+    <div style="position:relative; height:200px;">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Slow Movers -->
+    <div class="card">
+        <div class="card-title">⚠️ Slow-Moving Products</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Avg Days Sold</th>
+                    <th>Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in slow_movers %}
+                <tr>
+                    <td>{{ p.name }}</td>
+                    <td>
+                        <span class="badge badge-orange">{{ "%.1f"|format(p.avg_days) }} days</span>
+                    </td>
+                    <td>₱{{ "{:,.0f}".format(p.total_sales) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card">
+        <div class="card-title">💡 Recommendations</div>
+        {% if recommendations %}
+            {% for r in recommendations %}
+            <div class="rec-card">
+                <div class="rec-icon">{{ '📦' if r.type == 'restock' else '📉' }}</div>
+                <div>
+                    <div class="rec-name">{{ r.name }}</div>
+                    <div class="rec-msg">{{ r.msg }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color:var(--muted); font-size:14px; padding: 12px 0;">All products are performing well. No recommendations at this time.</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- Spoilage Alerts -->
+{% if spoilage_alerts %}
+<div class="card" style="margin-bottom:20px; border-left: 4px solid #e63946;">
+    <div class="card-title" style="color:#e63946;">🦠 Spoilage Alerts — Expiring Soon</div>
+    <table>
+        <thead>
+            <tr><th>Product</th><th>Remaining Stock</th><th>Expires On</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            {% for s in spoilage_alerts %}
+            <tr>
+                <td><strong>{{ s.name }}</strong></td>
+                <td>{{ "%.1f"|format(s.remaining_kg) }} kg</td>
+                <td>{{ s.expires_at[:10] }}</td>
+                <td>
+                    {% if s.days_left < 0 %}
+                        <span class="badge badge-red">Expired</span>
+                    {% elif s.days_left == 0 %}
+                        <span class="badge badge-red">Expires Today</span>
+                    {% else %}
+                        <span class="badge badge-orange">{{ s.days_left }} day(s) left</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Low Stock Alerts -->
+{% if low_stock %}
+<div class="card">
+    <div class="card-title">🚨 Low Stock Alerts</div>
+    <table>
+        <thead>
+            <tr><th>Product</th><th>Current Stock</th><th>Threshold</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            {% for p in low_stock %}
+            <tr>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>{{ "%.1f"|format(p.stock_kg) }} kg</td>
+                <td>{{ "%.1f"|format(p.low_stock_threshold) }} kg</td>
+                <td>
+                    {% if p.stock_kg == 0 %}
+                        <span class="badge badge-red">Out of Stock</span>
+                    {% else %}
+                        <span class="badge badge-orange">Low Stock</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(monthlyCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ hist_months | tojson }},
+        datasets: [{
+            label: 'Monthly Sales (₱)',
+            data: {{ hist_totals | tojson }},
+            backgroundColor: ['#40916c','#2d6a4f','#52b788'],
+            borderRadius: 8,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => '₱' + ctx.parsed.y.toLocaleString()
+                }
+            }
+        },
+        scales: {
+            y: {
+                grid: { color: '#f0f0f0' },
+                ticks: {
+                    callback: v => '₱' + (v/1000).toFixed(0) + 'k',
+                    font: { size: 11 }
+                }
+            },
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+    }
+});
+
+// Daily trend chart
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'line',
+    data: {
+        labels: {{ daily_labels | tojson }},
+        datasets: [{
+            label: 'Daily Sales (₱)',
+            data: {{ daily_totals | tojson }},
+            borderColor: '#40916c',
+            backgroundColor: 'rgba(64,145,108,0.1)',
+            borderWidth: 2,
+            pointRadius: 2,
+            fill: true,
+            tension: 0.3,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: { label: ctx => '₱' + ctx.parsed.y.toLocaleString() }
+            }
+        },
+        scales: {
+            y: {
+                grid: { color: '#f0f0f0' },
+                ticks: { callback: v => '₱' + (v/1000).toFixed(0) + 'k', font: { size: 11 } }
+            },
+            x: {
+                grid: { display: false },
+                ticks: {
+                    font: { size: 10 },
+                    maxTicksLimit: 15,
+                    maxRotation: 45
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

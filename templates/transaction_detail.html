@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Transaction {{ txn.transaction_code }}{% endblock %}
+{% block page_title %}Transaction Detail{% endblock %}
+{% block content %}
+<div style="max-width:600px;">
+    <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+            <div>
+                <div style="font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:800;">{{ txn.transaction_code }}</div>
+                <div style="font-size:13px; color:var(--muted); margin-top:4px;">{{ txn.created_at }}</div>
+            </div>
+            <span class="badge badge-green">Completed</span>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Product</th><th>Qty (kg)</th><th>Unit Price</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ "%.2f"|format(item.quantity_kg) }} kg</td>
+                    <td>₱{{ "%.2f"|format(item.unit_price) }}</td>
+                    <td>₱{{ "{:,.2f}".format(item.subtotal) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="text-align:right; margin-top:16px; padding-top:16px; border-top:2px solid var(--border);">
+            <span style="font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:800;">
+                Total: ₱{{ "{:,.2f}".format(txn.total_amount) }}
+            </span>
+        </div>
+    </div>
+    <a href="{{ url_for('transactions') }}" class="btn btn-outline">← Back to Transactions</a>
+</div>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}Analytics — Ajon Veggies{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block head %}
+<style>
+.analytics-controls { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.metric-btn {
+    padding:8px 18px; border-radius:20px; border:1.5px solid var(--border);
+    background:var(--card); font-size:13px; font-weight:600; cursor:pointer;
+    transition:all 0.15s; font-family:'Inter',sans-serif; color:var(--text);
+}
+.metric-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+.summary-table-wrap { overflow-x:auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set products_map = products_map | default({}) %}
+{% set months = ['December 2025','January 2026','February 2026'] %}
+
+<!-- Summary cards -->
+<div class="stats-grid" style="margin-bottom:24px;">
+    {% set totals = [395190, 415755, 365150] %}
+    {% for i in range(3) %}
+    <div class="stat-card">
+        <div class="stat-label">{{ months[i] }}</div>
+        <div class="stat-value">₱{{ "{:,.0f}".format(totals[i]) }}</div>
+        <div class="stat-sub">Total monthly revenue</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Main chart -->
+<div class="card" style="margin-bottom:20px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <div class="card-title" style="margin:0;">Product Performance by Month</div>
+        <div class="analytics-controls" style="margin:0;">
+            <button class="metric-btn active" onclick="switchMetric('sales', this)">Revenue</button>
+            <button class="metric-btn" onclick="switchMetric('qty', this)">Quantity (kg)</button>
+            <button class="metric-btn" onclick="switchMetric('days', this)">Days Sold</button>
+        </div>
+    </div>
+    <div style="position:relative; height:320px;">
+        <canvas id="analyticsChart"></canvas>
+    </div>
+</div>
+
+<!-- Per-product summary table -->
+<div class="card">
+    <div class="card-title">3-Month Summary per Product</div>
+    <div class="summary-table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Dec Revenue</th>
+                <th>Jan Revenue</th>
+                <th>Feb Revenue</th>
+                <th>Total Revenue</th>
+                <th>Total Qty (kg)</th>
+                <th>Trend</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in products_map.items() %}
+            {% set dec_s = data['December 2025']['sales'] | default(0) %}
+            {% set jan_s = data['January 2026']['sales'] | default(0) %}
+            {% set feb_s = data['February 2026']['sales'] | default(0) %}
+            {% set dec_q = data['December 2025']['qty'] | default(0) %}
+            {% set jan_q = data['January 2026']['qty'] | default(0) %}
+            {% set feb_q = data['February 2026']['qty'] | default(0) %}
+            {% set total_s = dec_s + jan_s + feb_s %}
+            {% set total_q = dec_q + jan_q + feb_q %}
+            <tr>
+                <td><strong>{{ name }}</strong></td>
+                <td>₱{{ "{:,.0f}".format(dec_s) }}</td>
+                <td>₱{{ "{:,.0f}".format(jan_s) }}</td>
+                <td>₱{{ "{:,.0f}".format(feb_s) }}</td>
+                <td><strong>₱{{ "{:,.0f}".format(total_s) }}</strong></td>
+                <td>{{ "{:,.0f}".format(total_q) }} kg</td>
+                <td>
+                    {% if feb_s > dec_s %}
+                        <span class="badge badge-green">↑ Up</span>
+                    {% elif feb_s < dec_s %}
+                        <span class="badge badge-orange">↓ Down</span>
+                    {% else %}
+                        <span class="badge">— Flat</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const productsData = {{ products_map | tojson }};
+const months = ['December 2025', 'January 2026', 'February 2026'];
+const monthLabels = ['December 2025', 'January 2026', 'February 2026'];
+const colors = [
+    '#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2',
+    '#f4a261','#e76f51','#264653','#2a9d8f','#e9c46a',
+    '#6d6875','#b5838d','#457b9d','#a8dadc','#f1faee'
+];
+
+let currentMetric = 'sales';
+let chart;
+
+function buildDatasets(metric) {
+    return Object.entries(productsData).map(([name, data], i) => ({
+        label: name,
+        data: months.map(m => data[m][metric] || 0),
+        backgroundColor: colors[i % colors.length],
+        borderColor: colors[i % colors.length],
+        borderRadius: 4,
+        borderSkipped: false,
+    }));
+}
+
+const ctx = document.getElementById('analyticsChart').getContext('2d');
+chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: monthLabels, datasets: buildDatasets('sales') },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+            tooltip: {
+                callbacks: {
+                    label: ctx => {
+                        const v = ctx.parsed.y;
+                        if (currentMetric === 'sales') return ctx.dataset.label + ': ₱' + v.toLocaleString();
+                        if (currentMetric === 'qty')   return ctx.dataset.label + ': ' + v.toFixed(1) + ' kg';
+                        return ctx.dataset.label + ': ' + v + ' days';
+                    }
+                }
+            }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: {
+                grid: { color: '#f0f0f0' },
+                ticks: {
+                    font: { size: 11 },
+                    callback: v => currentMetric === 'sales' ? '₱' + (v/1000).toFixed(0) + 'k' : v
+                }
+            }
+        }
+    }
+});
+
+function switchMetric(metric, btn) {
+    currentMetric = metric;
+    document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    chart.data.datasets = buildDatasets(metric);
+    chart.update();
+}
+</script>
+{% endblock %}
