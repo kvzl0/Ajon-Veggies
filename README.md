@@ -71,15 +71,16 @@ http://localhost:5000
 ---
 
 ## 📂 Project Structure
+```
 quirol_v6/
-├── app.py              # Main Flask application & routes
-├── database.py         # DB initialization, FIFO logic, data import
-├── requirements.txt    # Python dependencies
-├── quirol.db           # SQLite database (auto-created on first run)
+├── app.py                                  # Main Flask application & routes
+├── database.py                             # DB initialization, FIFO logic, data import
+├── requirements.txt                        # Python dependencies
+├── quirol.db                               # SQLite database (auto-created on first run)
 ├── data/
 │   ├── quirol_veggies_monthly_sales.xlsx   # Historical sales data
 │   └── daily_sales.csv
-├── templates/          # Jinja2 HTML templates
+├── templates/                              # Jinja2 HTML templates
 │   ├── dashboard.html
 │   ├── pos.html
 │   ├── products.html
@@ -88,8 +89,8 @@ quirol_v6/
 │   ├── accounts.html
 │   └── ...
 └── static/
-└── img/products/   # Vegetable product images
----
+    └── img/products/                       # Vegetable product images
+```
 
 ## 📝 Notes
 
