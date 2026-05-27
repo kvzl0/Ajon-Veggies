@@ -4,6 +4,18 @@ A web-based **Business Intelligence and Point-of-Sale system** for a vegetable d
 
 ---
 
+## 📑 Table of Contents
+- [Preview](#-preview)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Setup](#-setup)
+- [Default Login](#-default-login)
+- [Project Structure](#-project-structure)
+- [Notes](#-notes)
+- [Developer](#-developer)
+
+---
+
 ## 📸 Preview
 
 > Dashboard showing total revenue, daily sales trend, and top 5 best-selling products.
