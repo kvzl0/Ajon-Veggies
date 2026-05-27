@@ -17,13 +17,11 @@ A web-based **Business Intelligence and Point-of-Sale system** for a vegetable d
 ---
 
 ## 📸 Preview
-
 > Dashboard showing total revenue, daily sales trend, and top 5 best-selling products.
 
 ---
 
 ## ✨ Features
-
 - 📊 **Dashboard** — Total revenue, today's sales, product count, low stock alerts, monthly & daily sales charts
 - 🛒 **Point of Sale (POS)** — Process transactions with FIFO inventory deduction
 - 📦 **Product Management** — Add, update, restock, and delete vegetable items with images
@@ -36,7 +34,6 @@ A web-based **Business Intelligence and Point-of-Sale system** for a vegetable d
 ---
 
 ## 🛠️ Tech Stack
-
 | Layer | Technology |
 |---|---|
 | Backend | Python 3, Flask |
@@ -48,7 +45,6 @@ A web-based **Business Intelligence and Point-of-Sale system** for a vegetable d
 ---
 
 ## ⚙️ Setup
-
 **Requirements:** Python 3.8 or higher
 
 1. Clone the repository:
@@ -56,23 +52,22 @@ A web-based **Business Intelligence and Point-of-Sale system** for a vegetable d
    git clone https://github.com/kvzl0/Ajon-Veggies.git
    cd Ajon-Veggies
 ```
-
 2. Install dependencies:
 ```bash
    pip install -r requirements.txt
 ```
-
 3. Run the app:
 ```bash
    python app.py
 ```
-
 4. Open your browser and go to:
-http://localhost:5000
+```
+   http://localhost:5000
+```
+
 ---
 
 ## 🔑 Default Login
-
 | Field | Value |
 |---|---|
 | Username | `admin` |
@@ -83,6 +78,7 @@ http://localhost:5000
 ---
 
 ## 📂 Project Structure
+
 ```
 quirol_v6/
 ├── app.py                                  # Main Flask application & routes
@@ -101,11 +97,12 @@ quirol_v6/
 │   ├── accounts.html
 │   └── ...
 └── static/
-└── img/products/                       # Vegetable product images
+    └── img/products/                       # Vegetable product images
 ```
 
-## 📝 Notes
+---
 
+## 📝 Notes
 - The database (`quirol.db`) is created automatically on first run
 - Historical Excel sales data is imported automatically on first run
 - All data is stored locally — no external database needed
